@@ -1,0 +1,57 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8x]{inputenc}
+\usepackage[english,russian]{babel}
+\usepackage{amsmath}
+\usepackage{amsbsy}
+\usepackage{listings}
+\begin{document}
+
+\lstset{language=python}
+
+\begin{enumerate}
+
+\item В вершине списка будем хранить, помимо значения, результат XOR указателя на предыдущую вершину списка и указателя на следующую вершину списка. Таким образом, зная указатель на предыдущую вершину, из результата XOR этого указателя со значением в вершине можно получить указатель на следующую вершину. Поддерживая два указателя - на предыдущую и текущую вершины можно итерироваться по списку слева направо. Аналогично можно итерироваться справа налево. У head указатель на предыдущую вершину всегда nullptr, у tail - на следующую.
+Вставка в конец и начало осуществляется обновлением значений head и tail.
+
+Псевдокод:
+\begin{lstlisting}
+def iterate():
+	cur = head
+	nxt = head.ptr ^ nullptr
+	
+	while (cur != tail):
+		tmp = nxt
+		nxt = nxt.ptr ^ cur
+		cur = tmp
+		
+def push_front():
+	inserted.ptr = nullptr ^ head
+	head.ptr = (head.ptr ^ nullptr) ^ inserted
+	head = inserted
+\end{lstlisting}
+
+\item 
+
+\begin{lstlisting}
+def reverse(level, cur, prev):
+	if (cur == tail):
+		cur.next[level] = prev
+		return
+	
+	reverse(level, cur.next[level], cur)
+	cur.next[level] = prev
+	
+	if (cur == head && level > 0)
+		reverse(level - 1, cur, prev)
+		
+reverse(max_level, head, nullptr)
+swap(head, tail)
+\end{lstlisting}
+
+\item
+
+Ключ в скиплисте - само значение элемента. Значение в скиплисте - количество элементов со значением ключа. Помимо ссылки на следующий элемент на каждом уровне храним также сколько элементов массива мы перепрыгнем, перейдя по ней. При добавлении и удалении элемента обновляем эти значения для всех ссылок, которые перепрыгивают наш элемент. Тогда k статистику можно искать перепрыгивая по ссылкам так, чтобы в сумме не превысить k.
+
+\end{enumerate}
+
+\end{document}
