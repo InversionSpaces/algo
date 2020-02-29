@@ -7,6 +7,7 @@
 #include <random>
 #include <ctime>
 #include <utility>
+#include <cassert>
 
 using namespace std;
 
@@ -84,33 +85,34 @@ private:
 		const size_t range 	= (heap.size() + end - start) 						% heap.size();
 		const size_t pivot 	= (start + rand() % range) 							% heap.size();
 		
-		vector<T> less, equal, greater;
+		vector<T> less, greater;
 		
 		for (size_t i = start; i != end; i = (i + 1) % heap.size()) {
+			if (i == pivot)
+				continue;
+			
 			if (heap[i] < heap[pivot])
 				less.push_back(heap[i]);
-			else if (heap[i] > heap[pivot])
-				greater.push_back(heap[i]);
 			else
-				equal.push_back(heap[i]);
+				greater.push_back(heap[i]);
 		}
 		
-#define UPDATE(ARR)							\
-		for (const auto& a: ARR) {			\
-			heap[pos] = a;					\
-			pos = (pos + 1) % heap.size();	\
-		}
-		
+		const T pval = heap[pivot];
 		size_t pos = start;
 		
-		UPDATE(less)
+		for (const auto& l: less) {			
+			heap[pos] = l;					
+			pos = (pos + 1) % heap.size();	
+		}
 		
 		pivots.push_back(pos);
-		
-		UPDATE(equal)
-		UPDATE(greater)
-		
-#undef UPDATE
+		heap[pos] = pval;
+		pos = (pos + 1) % heap.size();	
+			
+		for (const auto& g: greater) {			
+			heap[pos] = g;					
+			pos = (pos + 1) % heap.size();	
+		}
 	}
 	
 	void iqs() {
@@ -143,7 +145,7 @@ public:
 	
 	void insert(T val) {
 		for (auto it = pivots.rbegin(); it != pivots.rend(); ++it) {
-			if (heap[*it] > val) {
+			if (val < heap[*it]) {
 				swap(val, heap[*it]);
 				*it = (*it + 1) % heap.size();
 				swap(val, heap[*it]);
@@ -155,10 +157,8 @@ public:
 		
 		++size_;
 		
-		reverse(pivots.begin(), pivots.end());
 		const auto& end = unique(pivots.begin(), pivots.end());
 		pivots.erase(end, pivots.end());
-		reverse(pivots.begin(), pivots.end());
 		
 		if (size_ == heap.size()) 
 			resize();
@@ -212,102 +212,149 @@ public:
 
 typedef long long ll;
 
-int main() {
-	srand(time(NULL));
+struct blist {
+	blist* next;
+	blist* prev;
 	
-	quickheap<ll> qh(1UL << 24);
+	size_t start, id;
+	int is_free;
+};
+
+struct bheap {
+	blist* pos;
+	size_t id, size;
+};
+
+bool operator<(const bheap& a, const bheap& b) {
+	return a.size > b.size;
+}
+
+inline void xmalloc(	vector<char>& is_r,
+						vector<blist*>& reqs,
+						quickheap<bheap>& heap,
+						size_t rsize, size_t fsize) 
+{
+	while (!heap.empty() && !is_r.at(heap.find_min().id))
+		heap.extract_min();
 	
-	cin.tie(NULL);
-	ios_base::sync_with_stdio(false);
-	
-	/*
-	qh.insert(520596304);
-	qh.insert(-265233646);
-	
-	qh.print();
-	
-	while (!qh.empty() && qh.find_min() < -222234500) {
-		qh.extract_min();
-		cout << "extract: " << endl;
-		qh.print();
-	}
-	
-	if (qh.empty() || qh.find_min() > -222234500) {
-		qh.insert(-222234500);
-		cout << "insert: " << endl;
-		qh.print();
-	}
-	
-	return 0;
-	*/
-	
-	string cmd; ll x;
-	vector<pair<string, ll>> ans;
-	
-	ll m;
-	cin >> m;
-	while (m--) {
-		//qh.print();
-		cin >> cmd;
-		if (cmd == "insert") {
-			cin >> x;
-			
-			//cout << cmd << " " << x << ": " << endl;
-			
-			qh.insert(x);
-			ans.push_back({cmd, x});
-			
-			//qh.print();
-		}
-		else if (cmd == "removeMin") {
-			if (qh.empty())
-				ans.push_back({"insert", 0});
-			else
-				qh.extract_min();
-			
-			//cout << cmd << endl;
-			//qh.print();
-				
-			ans.push_back({cmd, 0});
-		}
-		else if (cmd == "getMin") {
-			cin >> x;
-			
-			//cout << cmd << " " << x << ": " << endl;
-			
-			if (qh.empty() || qh.find_min() > x) {
-				ans.push_back({"insert", x});
-				qh.insert(x);
-				
-				//qh.print();
-			}
-			else {
-				while (!qh.empty() && qh.find_min() < x) {
-					ans.push_back({"removeMin", 0});
-					qh.extract_min();
-					
-					//qh.print();
-				}
-				
-				if (qh.empty() || qh.find_min() > x) {
-					ans.push_back({"insert", x});
-					qh.insert(x);
-					
-					//qh.print();
-				}
-			}
-			
-			ans.push_back({cmd, x});
-		}
+	if (heap.empty() || heap.find_min().size < rsize) {
+		cout << "-1" << endl;
 		
-		//cout << "-----------------------" << endl;
+		reqs.push_back(nullptr);
+		
+		return;
 	}
 	
-	cout << ans.size() << "\n";
-	for (const auto& p: ans) {
-		cout << p.first;
-		if (p.first != "removeMin")
-			cout << " " << p.second;
-		cout << "\n";
+	blist* block = heap.extract_min().pos;
+	
+	assert(block);
+	assert(block->is_free);
+	
+	block->is_free = false;
+	is_r.at(block->id) = false;
+	
+	reqs.push_back(block);
+	
+	cout << block->start + 1 << "\n";
+	
+	blist* const next = block->next;
+	const ll size = (next ? next->start : fsize) - block->start;
+	
+	if (size == rsize)
+		return;
+		
+	blist* nblock = new blist {	
+							next, 
+							block, 
+							block->start + rsize,
+							is_r.size(),
+							true 
+						};
+	
+	block->next = nblock;
+	if (nblock->next)
+		nblock->next->prev = nblock;
+	
+	heap.insert({nblock, is_r.size(), size - rsize});
+	is_r.push_back(true);	
+}
+
+inline void xfree(		vector<char>& is_r,
+						vector<blist*>& reqs,
+						quickheap<bheap>& heap,
+						ll id, ll fsize) 
+{	
+	reqs.push_back(nullptr);
+	
+	blist* cur = reqs.at(id);
+	
+	if (!cur)
+		return;
+	
+	assert(!is_r.at(cur->id)); 
+	
+	blist* prev = cur->prev;
+	if (prev && prev->is_free) {
+		is_r.at(prev->id) = false;
+		cur->prev = prev->prev;
+		cur->start = prev->start;
+		
+		if (cur->prev)
+			cur->prev->next = cur;
+		
+		delete prev;
+	}
+	
+	blist* next = cur->next;
+	if (next && next->is_free) {
+		is_r.at(next->id) = false;
+		cur->next = next->next;
+		
+		if (cur->next)
+			cur->next->prev = cur;
+		
+		delete next;
+	}
+	
+	cur->is_free = true;
+	
+	cur->id = is_r.size();
+	is_r.push_back(true);
+	
+	heap.insert({
+		cur, 
+		cur->id, 
+		(cur->next ? cur->next->start : fsize) - cur->start
+	});					
+}
+
+int main() {
+	size_t n, m;
+	cin >> n >> m;
+	
+	vector<char> is_relevant;
+	vector<blist*> requests;
+	quickheap<bheap> heap; 
+	
+	blist* first = new blist{nullptr, nullptr, 0, 0, true};
+	blist* head = new blist{first, nullptr, 0, 0, false}; 
+	first->prev = head;
+	
+	heap.insert({first, 0, n});
+	is_relevant.push_back(true);
+	
+	for (ll i; m--;) {
+		cin >> i;
+		
+		if (i > 0)
+			xmalloc(is_relevant, requests, heap, i, n);
+		else
+			xfree(is_relevant, requests, heap, -1 - i, n);
+	}
+	
+	while (head) {
+		blist* tmp = head->next;
+		delete head;
+		head = tmp;
 	}
 }
