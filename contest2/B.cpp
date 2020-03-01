@@ -195,19 +195,6 @@ public:
 	size_t size() {
 		return size_;
 	}
-	
-	void print() {
-		cout << "pivots: " << pivots.size() << "; size: " << size_ << endl;
-		for (	size_t i = start; 
-				i != (start + size_) % heap.size();
-				i = (i + 1) % heap.size()) {
-			if (find(pivots.begin(), pivots.end(), i) != pivots.end())
-				cout << "[" << heap[i] << "] ";
-			else
-				cout << heap[i] << " ";
-		}
-		cout << endl;
-	}
 };
 
 typedef long long ll;
@@ -229,17 +216,21 @@ bool operator<(const bheap& a, const bheap& b) {
 	return a.size > b.size;
 }
 
-inline void xmalloc(	vector<char>& is_r,
-						vector<blist*>& reqs,
-						quickheap<bheap>& heap,
-						size_t rsize, size_t fsize) 
+inline void xmalloc(	vector<char>& 		is_r,
+						vector<blist*>& 	reqs,
+						quickheap<bheap>& 	heap,
+						size_t 				rsize, 
+						size_t 				fsize) 
 {
+	// extract all not relevant blocks
 	while (!heap.empty() && !is_r.at(heap.find_min().id))
 		heap.extract_min();
 	
+	// have no space for request
 	if (heap.empty() || heap.find_min().size < rsize) {
 		cout << "-1" << endl;
 		
+		// failed request
 		reqs.push_back(nullptr);
 		
 		return;
@@ -253,6 +244,7 @@ inline void xmalloc(	vector<char>& is_r,
 	block->is_free = false;
 	is_r.at(block->id) = false;
 	
+	// request succeded
 	reqs.push_back(block);
 	
 	cout << block->start + 1 << "\n";
@@ -262,40 +254,53 @@ inline void xmalloc(	vector<char>& is_r,
 	
 	if (size == rsize)
 		return;
-		
-	blist* nblock = new blist {	
-							next, 
-							block, 
-							block->start + rsize,
-							is_r.size(),
-							true 
-						};
 	
+	// insert new block in list {
+	blist* nblock = new blist {	
+							next, 					// next
+							block, 					// prev
+							block->start + rsize,	// start
+							is_r.size(),			// id
+							true 					// is_free
+						};
 	block->next = nblock;
 	if (nblock->next)
 		nblock->next->prev = nblock;
+	// } now block <-> nblock <-> next
 	
-	heap.insert({nblock, is_r.size(), size - rsize});
+	// insert nblock in heap
+	heap.insert({
+					nblock, 		// pos
+					is_r.size(), 	// id
+					size - rsize	// size
+				});
+	
+	// is_relevant[nblock->id] = true
 	is_r.push_back(true);	
 }
 
-inline void xfree(		vector<char>& is_r,
-						vector<blist*>& reqs,
-						quickheap<bheap>& heap,
-						ll id, ll fsize) 
+inline void xfree(		vector<char>& 		is_r,
+						vector<blist*>& 	reqs,
+						quickheap<bheap>& 	heap,
+						ll 					id, 
+						ll 					fsize	) 
 {	
+	// dummy request to support indexing
 	reqs.push_back(nullptr);
 	
 	blist* cur = reqs.at(id);
 	
+	// it was failed request
 	if (!cur)
 		return;
 	
 	assert(!is_r.at(cur->id)); 
 	
+	// collapse with previous block {
 	blist* prev = cur->prev;
 	if (prev && prev->is_free) {
 		is_r.at(prev->id) = false;
+		
 		cur->prev = prev->prev;
 		cur->start = prev->start;
 		
@@ -304,10 +309,13 @@ inline void xfree(		vector<char>& is_r,
 		
 		delete prev;
 	}
+	// }
 	
+	// collapse with next block {
 	blist* next = cur->next;
 	if (next && next->is_free) {
 		is_r.at(next->id) = false;
+		
 		cur->next = next->next;
 		
 		if (cur->next)
@@ -315,16 +323,19 @@ inline void xfree(		vector<char>& is_r,
 		
 		delete next;
 	}
+	// }
 	
 	cur->is_free = true;
-	
 	cur->id = is_r.size();
+	
+	// is_relevamt[cur->id] = true
 	is_r.push_back(true);
 	
+	// insert new element in heap
 	heap.insert({
-		cur, 
-		cur->id, 
-		(cur->next ? cur->next->start : fsize) - cur->start
+		cur, 												// pos
+		cur->id, 											// id
+		(cur->next ? cur->next->start : fsize) - cur->start	// size
 	});					
 }
 
@@ -336,11 +347,22 @@ int main() {
 	vector<blist*> requests;
 	quickheap<bheap> heap; 
 	
-	blist* first = new blist{nullptr, nullptr, 0, 0, true};
-	blist* head = new blist{first, nullptr, 0, 0, false}; 
+	// first empty block
+	blist* first = new blist{	
+								nullptr,	//next
+								nullptr,	//prev
+								0,			//start
+								0, 			//id
+								true		//is_free
+							};
+	// dummy block
+	blist* head = new blist{first}; 
+	// head <-> first
 	first->prev = head;
 	
 	heap.insert({first, 0, n});
+	
+	// is_relevant[first->id] = true
 	is_relevant.push_back(true);
 	
 	for (ll i; m--;) {
@@ -349,9 +371,10 @@ int main() {
 		if (i > 0)
 			xmalloc(is_relevant, requests, heap, i, n);
 		else
-			xfree(is_relevant, requests, heap, -1 - i, n);
+			xfree(is_relevant, requests, heap, -i - 1, n);
 	}
 	
+	// delete
 	while (head) {
 		blist* tmp = head->next;
 		delete head;
