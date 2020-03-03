@@ -8,82 +8,28 @@
 #include <ctime>
 #include <utility>
 #include <cassert>
+#include <set>
 
 using namespace std;
-
-template<typename riter>
-typename iterator_traits<riter>::value_type 
-	k_stat(riter begin, riter end, size_t k) {
-	using val_t = typename iterator_traits<riter>::value_type;
-	
-	size_t n = distance(begin, end);
-	
-	if (k >= n)
-		throw invalid_argument("k_stat: k is out of range");
-	
-	if (n < 5) {
-		vector<val_t> tmpvec(begin, end);
-		sort(tmpvec.begin(), tmpvec.end());
-		
-		return tmpvec[k];
-	}
-	
-	vector<val_t> medians(n / 5);
-	array<val_t, 5> tmparr;
-	riter current = begin;
-	
-	for (val_t& m: medians) {
-		copy(current, current + 5, tmparr.begin());
-		sort(tmparr.begin(), tmparr.end());
-		m = tmparr[3];
-		current += 5;
-	}
-	
-	val_t pivot = k_stat(	medians.begin(), 
-							medians.end(), 
-							medians.size() / 2
-						);
-	
-	vector<val_t> less;
-	vector<val_t> equal;
-	vector<val_t> greater;
-	
-	for (riter it = begin; it != end; ++it) {
-		if (*it < pivot) 
-			less.push_back(*it);
-		else if (*it > pivot) 
-			greater.push_back(*it);
-		else 
-			equal.push_back(*it);
-	}
-	
-	if (k < less.size())
-		return k_stat(	less.begin(), 
-						less.end(), 
-						k
-					);
-	
-	if (k >= less.size() + equal.size())
-		return k_stat(	greater.begin(), 
-						greater.end(), 
-						k - less.size() - equal.size()
-					);
-		
-	return pivot;
-}
 
 template<typename T>
 class quickheap 
 {
 private:
-	vector<T> heap;
-	vector<size_t> pivots;
-	size_t start, size_;
+	vector<T> 		heap;
+	vector<size_t> 	pivots;
+	size_t 			start, size_;
+	
+	inline size_t get_end() {
+		if (pivots.empty()) 
+			return (start + size_) % heap.size();
+		return pivots.back();
+	}
 	
 	void partition() {
-		const size_t end 	= (pivots.empty() ? start + size_ : pivots.back()) 	% heap.size();
-		const size_t range 	= (heap.size() + end - start) 						% heap.size();
-		const size_t pivot 	= (start + rand() % range) 							% heap.size();
+		const size_t end = get_end();
+		const size_t size = (heap.size() + end - start) % heap.size();
+		const size_t pivot = (start + rand() % size) % heap.size();
 		
 		vector<T> less, greater;
 		
@@ -99,19 +45,18 @@ private:
 		
 		const T pval = heap[pivot];
 		size_t pos = start;
-		
+
 		for (const auto& l: less) {			
 			heap[pos] = l;					
 			pos = (pos + 1) % heap.size();	
 		}
 		
 		pivots.push_back(pos);
-		heap[pos] = pval;
-		pos = (pos + 1) % heap.size();	
+		heap[pos] = pval;	
 			
-		for (const auto& g: greater) {			
-			heap[pos] = g;					
-			pos = (pos + 1) % heap.size();	
+		for (const auto& g: greater) {
+			pos = (pos + 1) % heap.size();			
+			heap[pos] = g;							
 		}
 	}
 	
@@ -127,12 +72,11 @@ private:
 		const size_t psize = heap.size();
 		heap.resize(psize * 2);
 		
-		for (size_t i = psize; i < start + psize; ++i)
+		for (size_t i = psize; i < start + size_; ++i)
 			heap[i] = heap[i % psize];
 		
 		for (auto& p: pivots)
-			if (p < start)
-				p += psize;
+			if (p < start) p += psize;
 	}
 	
 public:
@@ -144,24 +88,31 @@ public:
 	{ }
 	
 	void insert(T val) {
-		for (auto it = pivots.rbegin(); it != pivots.rend(); ++it) {
-			if (val < heap[*it]) {
-				swap(val, heap[*it]);
-				*it = (*it + 1) % heap.size();
-				swap(val, heap[*it]);
+		if (size_ * 2 >= heap.size()) 
+			resize();
+		
+		size_t pos = (start + size_++) % heap.size();
+		
+		for (auto it = pivots.begin(); it != pivots.end(); ++it) {
+			if (heap[*it] < val)
+				break;
+			
+			size_t next = (*it + 1) % heap.size();
+			
+			if (pos == next) {
+				heap[pos] = heap[*it];
+				swap(pos, *it);
+				
+				continue;
 			}
+			
+			heap[pos] = heap[next];
+			heap[next] = heap[*it];
+			pos = *it;
+			*it = next;
 		}
 		
-		if (pivots.empty() || pivots.front() != start + size_)
-				heap[(start + size_) % heap.size()] = val;
-		
-		++size_;
-		
-		const auto& end = unique(pivots.begin(), pivots.end());
-		pivots.erase(end, pivots.end());
-		
-		if (size_ == heap.size()) 
-			resize();
+		heap[pos] = val;
 	}
 	
 	T find_min() {
@@ -212,18 +163,22 @@ struct bheap {
 	size_t id, size;
 };
 
+vector<char> is_relevant;
+vector<blist*> requests;
+quickheap<bheap> heap;//(1UL << 24); 
+size_t fsize;
+
 bool operator<(const bheap& a, const bheap& b) {
+	if (a.size == b.size)
+		return a.id < b.id;
+	
 	return a.size > b.size;
 }
 
-inline void xmalloc(	vector<char>& 		is_r,
-						vector<blist*>& 	reqs,
-						quickheap<bheap>& 	heap,
-						size_t 				rsize, 
-						size_t 				fsize) 
+inline void xmalloc(size_t rsize) 
 {
 	// extract all not relevant blocks
-	while (!heap.empty() && !is_r.at(heap.find_min().id))
+	while (!heap.empty() && !is_relevant.at(heap.find_min().id))
 		heap.extract_min();
 	
 	// have no space for request
@@ -231,7 +186,7 @@ inline void xmalloc(	vector<char>& 		is_r,
 		cout << "-1" << endl;
 		
 		// failed request
-		reqs.push_back(nullptr);
+		requests.push_back(nullptr);
 		
 		return;
 	}
@@ -242,10 +197,10 @@ inline void xmalloc(	vector<char>& 		is_r,
 	assert(block->is_free);
 	
 	block->is_free = false;
-	is_r.at(block->id) = false;
+	is_relevant.at(block->id) = false;
 	
 	// request succeded
-	reqs.push_back(block);
+	requests.push_back(block);
 	
 	cout << block->start + 1 << "\n";
 	
@@ -260,7 +215,7 @@ inline void xmalloc(	vector<char>& 		is_r,
 							next, 					// next
 							block, 					// prev
 							block->start + rsize,	// start
-							is_r.size(),			// id
+							is_relevant.size(),			// id
 							true 					// is_free
 						};
 	block->next = nblock;
@@ -271,35 +226,31 @@ inline void xmalloc(	vector<char>& 		is_r,
 	// insert nblock in heap
 	heap.insert({
 					nblock, 		// pos
-					is_r.size(), 	// id
+					is_relevant.size(), 	// id
 					size - rsize	// size
 				});
 	
-	// is_relevant[nblock->id] = true
-	is_r.push_back(true);	
+	// is_relevantelevant[nblock->id] = true
+	is_relevant.push_back(true);	
 }
 
-inline void xfree(		vector<char>& 		is_r,
-						vector<blist*>& 	reqs,
-						quickheap<bheap>& 	heap,
-						ll 					id, 
-						ll 					fsize	) 
+inline void xfree(size_t id)
 {	
 	// dummy request to support indexing
-	reqs.push_back(nullptr);
+	requests.push_back(nullptr);
 	
-	blist* cur = reqs.at(id);
+	blist* cur = requests.at(id);
 	
 	// it was failed request
 	if (!cur)
 		return;
 	
-	assert(!is_r.at(cur->id)); 
+	assert(!is_relevant.at(cur->id)); 
 	
 	// collapse with previous block {
 	blist* prev = cur->prev;
 	if (prev && prev->is_free) {
-		is_r.at(prev->id) = false;
+		is_relevant.at(prev->id) = false;
 		
 		cur->prev = prev->prev;
 		cur->start = prev->start;
@@ -314,7 +265,7 @@ inline void xfree(		vector<char>& 		is_r,
 	// collapse with next block {
 	blist* next = cur->next;
 	if (next && next->is_free) {
-		is_r.at(next->id) = false;
+		is_relevant.at(next->id) = false;
 		
 		cur->next = next->next;
 		
@@ -326,10 +277,10 @@ inline void xfree(		vector<char>& 		is_r,
 	// }
 	
 	cur->is_free = true;
-	cur->id = is_r.size();
+	cur->id = is_relevant.size();
 	
-	// is_relevamt[cur->id] = true
-	is_r.push_back(true);
+	// is_relevantelevamt[cur->id] = true
+	is_relevant.push_back(true);
 	
 	// insert new element in heap
 	heap.insert({
@@ -339,13 +290,11 @@ inline void xfree(		vector<char>& 		is_r,
 	});					
 }
 
+#define CF_LET_ME_IIIIIIIIIIN 1
+
 int main() {
-	size_t n, m;
-	cin >> n >> m;
-	
-	vector<char> is_relevant;
-	vector<blist*> requests;
-	quickheap<bheap> heap; 
+	size_t m;
+	cin >> fsize >> m;
 	
 	// first empty block
 	blist* first = new blist{	
@@ -360,18 +309,18 @@ int main() {
 	// head <-> first
 	first->prev = head;
 	
-	heap.insert({first, 0, n});
+	heap.insert({first, 0, fsize});
 	
-	// is_relevant[first->id] = true
+	// is_relevantelevant[first->id] = true
 	is_relevant.push_back(true);
 	
 	for (ll i; m--;) {
 		cin >> i;
 		
 		if (i > 0)
-			xmalloc(is_relevant, requests, heap, i, n);
+			xmalloc(i);
 		else
-			xfree(is_relevant, requests, heap, -i - 1, n);
+			xfree(-i - 1);
 	}
 	
 	// delete

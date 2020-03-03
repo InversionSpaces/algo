@@ -75,14 +75,20 @@ template<typename T>
 class quickheap 
 {
 private:
-	vector<T> heap;
-	vector<size_t> pivots;
-	size_t start, size_;
+	vector<T> 		heap;
+	vector<size_t> 	pivots;
+	size_t 			start, size_;
+	
+	inline size_t get_end() {
+		if (pivots.empty()) 
+			return (start + size_) % heap.size();
+		return pivots.back();
+	}
 	
 	void partition() {
-		const size_t end 	= (pivots.empty() ? start + size_ : pivots.back()) 	% heap.size();
-		const size_t range 	= (heap.size() + end - start) 						% heap.size();
-		const size_t pivot 	= (start + rand() % range) 							% heap.size();
+		const size_t end = get_end();
+		const size_t size = (heap.size() + end - start) % heap.size();
+		const size_t pivot = (start + rand() % size) % heap.size();
 		
 		vector<T> less, greater;
 		
@@ -98,19 +104,18 @@ private:
 		
 		const T pval = heap[pivot];
 		size_t pos = start;
-		
+
 		for (const auto& l: less) {			
 			heap[pos] = l;					
 			pos = (pos + 1) % heap.size();	
 		}
 		
 		pivots.push_back(pos);
-		heap[pos] = pval;
-		pos = (pos + 1) % heap.size();	
+		heap[pos] = pval;	
 			
-		for (const auto& g: greater) {			
-			heap[pos] = g;					
-			pos = (pos + 1) % heap.size();	
+		for (const auto& g: greater) {
+			pos = (pos + 1) % heap.size();			
+			heap[pos] = g;							
 		}
 	}
 	
@@ -126,12 +131,11 @@ private:
 		const size_t psize = heap.size();
 		heap.resize(psize * 2);
 		
-		for (size_t i = psize; i < start + psize; ++i)
+		for (size_t i = psize; i < start + size_; ++i)
 			heap[i] = heap[i % psize];
 		
 		for (auto& p: pivots)
-			if (p < start)
-				p += psize;
+			if (p < start) p += psize;
 	}
 	
 public:
@@ -143,24 +147,31 @@ public:
 	{ }
 	
 	void insert(T val) {
-		for (auto it = pivots.rbegin(); it != pivots.rend(); ++it) {
-			if (heap[*it] > val) {
-				swap(val, heap[*it]);
-				*it = (*it + 1) % heap.size();
-				swap(val, heap[*it]);
+		if (size_ * 2 >= heap.size()) 
+			resize();
+		
+		size_t pos = (start + size_++) % heap.size();
+		
+		for (auto it = pivots.begin(); it != pivots.end(); ++it) {
+			if (heap[*it] < val)
+				break;
+			
+			size_t next = (*it + 1) % heap.size();
+			
+			if (pos == next) {
+				heap[pos] = heap[*it];
+				swap(pos, *it);
+				
+				continue;
 			}
+			
+			heap[pos] = heap[next];
+			heap[next] = heap[*it];
+			pos = *it;
+			*it = next;
 		}
 		
-		if (pivots.empty() || pivots.front() != start + size_)
-				heap[(start + size_) % heap.size()] = val;
-		
-		++size_;
-		
-		const auto& end = unique(pivots.begin(), pivots.end());
-		pivots.erase(end, pivots.end());
-		
-		if (size_ == heap.size()) 
-			resize();
+		heap[pos] = val;
 	}
 	
 	T find_min() {
@@ -193,19 +204,6 @@ public:
 	
 	size_t size() {
 		return size_;
-	}
-	
-	void print() {
-		cout << "pivots: " << pivots.size() << "; size: " << size_ << endl;
-		for (	size_t i = start; 
-				i != (start + size_) % heap.size();
-				i = (i + 1) % heap.size()) {
-			if (find(pivots.begin(), pivots.end(), i) != pivots.end())
-				cout << "[" << heap[i] << "] ";
-			else
-				cout << heap[i] << " ";
-		}
-		cout << endl;
 	}
 };
 
