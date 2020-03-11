@@ -72,14 +72,14 @@ typename iterator_traits<riter>::value_type
 }
 
 template<typename T>
-class quickheap 
+class QuickHeap 
 {
 private:
-	vector<T> 		heap;
-	vector<size_t> 	pivots;
-	size_t 			start, size_;
+	vector<T>       heap;
+	vector<size_t>  pivots;
+	size_t          start, size_;
 	
-	inline size_t get_end() {
+	inline size_t get_end() const noexcept {
 		if (pivots.empty()) 
 			return (start + size_) % heap.size();
 		return pivots.back();
@@ -139,7 +139,7 @@ private:
 	}
 	
 public:
-	quickheap(size_t capacity=256) :
+	QuickHeap(size_t capacity=256) :
 		start(0),
 		size_(0),
 		heap(capacity),
@@ -198,113 +198,86 @@ public:
 		return heap[pos];
 	}
 	
-	bool empty() {
+	bool empty() const noexcept {
 		return size_ == 0;
 	}
 	
-	size_t size() {
+	size_t size() const noexcept {
 		return size_;
 	}
 };
 
 typedef long long ll;
 
+enum CMD_TYPE {
+	CMD_INSERT,
+	CMD_REMOVE,
+	CMD_FIND
+};
+
 int main() {
 	srand(time(NULL));
 	
-	quickheap<ll> qh(1UL << 24);
+	QuickHeap<ll> qh(1UL << 24);
 	
 	cin.tie(NULL);
 	ios_base::sync_with_stdio(false);
 	
-	/*
-	qh.insert(520596304);
-	qh.insert(-265233646);
-	
-	qh.print();
-	
-	while (!qh.empty() && qh.find_min() < -222234500) {
-		qh.extract_min();
-		cout << "extract: " << endl;
-		qh.print();
-	}
-	
-	if (qh.empty() || qh.find_min() > -222234500) {
-		qh.insert(-222234500);
-		cout << "insert: " << endl;
-		qh.print();
-	}
-	
-	return 0;
-	*/
-	
 	string cmd; ll x;
-	vector<pair<string, ll>> ans;
+	vector<pair<CMD_TYPE, ll>> ans;
 	
 	ll m;
 	cin >> m;
 	while (m--) {
-		//qh.print();
 		cin >> cmd;
 		if (cmd == "insert") {
 			cin >> x;
 			
-			//cout << cmd << " " << x << ": " << endl;
-			
 			qh.insert(x);
-			ans.push_back({cmd, x});
-			
-			//qh.print();
+			ans.push_back({CMD_INSERT, x});
 		}
 		else if (cmd == "removeMin") {
 			if (qh.empty())
-				ans.push_back({"insert", 0});
+				ans.push_back({CMD_INSERT, 0});
 			else
 				qh.extract_min();
-			
-			//cout << cmd << endl;
-			//qh.print();
 				
-			ans.push_back({cmd, 0});
+			ans.push_back({CMD_REMOVE, 0});
 		}
 		else if (cmd == "getMin") {
 			cin >> x;
 			
-			//cout << cmd << " " << x << ": " << endl;
-			
 			if (qh.empty() || qh.find_min() > x) {
-				ans.push_back({"insert", x});
+				ans.push_back({CMD_INSERT, x});
 				qh.insert(x);
-				
-				//qh.print();
 			}
 			else {
 				while (!qh.empty() && qh.find_min() < x) {
-					ans.push_back({"removeMin", 0});
+					ans.push_back({CMD_REMOVE, 0});
 					qh.extract_min();
-					
-					//qh.print();
 				}
 				
 				if (qh.empty() || qh.find_min() > x) {
-					ans.push_back({"insert", x});
+					ans.push_back({CMD_INSERT, x});
 					qh.insert(x);
-					
-					//qh.print();
 				}
 			}
 			
-			ans.push_back({cmd, x});
+			ans.push_back({CMD_FIND, x});
 		}
-		
-		//cout << "-----------------------" << endl;
 	}
 	
 	cout << ans.size() << "\n";
 	for (const auto& p: ans) {
-		cout << p.first;
-		if (p.first != "removeMin")
-			cout << " " << p.second;
-		cout << "\n";
+		switch (p.first) {
+			case CMD_FIND:
+				cout << "getMin " << p.second << "\n";
+			break;
+			case CMD_INSERT:
+				cout << "insert " << p.second << "\n";
+			break;
+			case CMD_REMOVE:
+				cout << "removeMin\n";
+		}
 	}
 }
