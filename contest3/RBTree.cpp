@@ -65,6 +65,12 @@ using Node = RBNode<T>;
 };
 
 template<typename T>
+class RBTree;
+
+template<typename T>
+void snapshot(const RBTree<T>& tree);
+
+template<typename T>
 class RBTree {
 using Node = RBNode<T>;	
 private:	
@@ -79,7 +85,8 @@ private:
 		assert(node);
 
 		Node* pivot = (mode == ROT_LEFT ? node->right : node->left);
-		if (!pivot) return;
+		
+		assert(pivot);
 
 		Node* parent = node->parent;
 		pivot->parent = parent;
@@ -122,7 +129,7 @@ private:
 		assert(gp->col == 'b'); // it must be black
 
 		Node* uncle = node->uncle();
-
+		
 		// case 1:
 		//      gp           gp(r or b if root)
 		//     /  \         /   \
@@ -130,8 +137,6 @@ private:
 		//   /            /             conflict
 		// n(r)         n(r)            recursively
 		if (uncle && uncle->col == 'r') {
-			cout << "uncle red" << endl;
-
 			node->parent->col = 'b';
 			uncle->col = 'b';
 			
@@ -154,11 +159,10 @@ private:
 		//      \         /
 		//      n(r)    p(r)
 		if (gp->left == node->parent && node->parent->right == node) {
-			cout << "rotate left" << endl;
-			rotate(node->parent, ROT_LEFT);
-			
 			// parent is new node
 			node = node->parent;
+			
+			rotate(node, ROT_LEFT);
 		}
 		//      gp           gp
 		//     /  \         /  \
@@ -166,13 +170,12 @@ private:
 		//        /              \
 		//      n(r)             p(r)
 		else if (gp->right == node->parent && node->parent->left == node) {
-			cout << "rotate right" << endl;
-			rotate(node->parent, ROT_RIGHT);
-			
 			// parent is new node
 			node = node->parent;
+
+			rotate(node, ROT_RIGHT);	
 		}
-			
+		
 		node->parent->col = 'b';
 		gp->col = 'r';
 
@@ -180,9 +183,7 @@ private:
 			rotate(gp, ROT_RIGHT);
 		else if (node->parent->right == node && gp->right == node->parent)
 			rotate(gp, ROT_LEFT);
-		else assert(0); // shouldn't be here
-
-		cout << "</fix insert>" << endl;
+		else assert(!"Impossible case"); // shouldn't be here
 	}
 
 	void fixErase(Node* node, Node* parent) {
@@ -352,6 +353,18 @@ public:
 
 		return true;
 	}
+
+	bool contains(const T& val) {
+		for (Node* cur = root; cur;) {
+			if (cur->val < val)
+				cur = cur->right;
+			else if (val < cur->val)
+				cur = cur->left;
+			else return true;
+		}
+
+		return false;
+	}
 	
 	template<typename U>
 	friend ostream& operator<<(ostream& out, const RBTree<U>& tree);
@@ -374,16 +387,19 @@ void snapshot(const RBTree<T>& tree) {
 	tmp.close();
 	string cmd = string("dot /tmp/tmp.dot -Tpng -Gdpi=300 -o ./snapshot") + to_string(i++) + string(".png");
 	system(cmd.c_str());
+	cout << "snapshot: " << i << endl;
 }
 
 int main() {
-	srand(5);
+	srand(1);
 
 	RBTree<int> tree;
-	for (int i = 0; i < 15; ++i) {
+	for (int i = 0; i < 150; ++i) {
 		int ins = rand() % 100;
-		cout << "inserting: " << ins << endl;
+		cout << ins << endl;
 		tree.insert(ins);
-		snapshot(tree);
+		assert(tree.contains(ins));
 	}
+
+	snapshot(tree);
 }
