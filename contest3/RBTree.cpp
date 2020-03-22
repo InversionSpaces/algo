@@ -81,6 +81,20 @@ private:
 		ROT_RIGHT
 	};
 
+	// ROT_LEFT:
+	//   |          |
+	//   n          b
+	//  / \        / \
+	// a   b  ->  n  br
+	//    / \    / \
+	//   bl br  a  bl
+	// ROT_RIGHT:
+	//     |         |
+	//     n         a
+	//    / \       / \
+	//   a   b ->  al  n
+	//  / \           / \
+	// al ar         ar  b
 	void rotate(Node* node, ROT_MODE mode) {
 		assert(node);
 
@@ -117,8 +131,6 @@ private:
 	}
 
 	void fixInsert(Node* node) {
-		cout << "<fix insert>" << endl;
-
 		assert(node);
 		assert(node->col == 'r'); // fixInsert called only on red nodes
 		assert(node->parent->col == 'r'); // fixInsert called only if there is conflict
@@ -131,7 +143,7 @@ private:
 		Node* uncle = node->uncle();
 		
 		// case 1:
-		//      gp           gp(r or b if root)
+		//     gp(b)  gp(r or b if root)
 		//     /  \         /   \
 		//   p(r) u(r) -> p(b)  u(b)    and fix  
 		//   /            /             conflict
@@ -153,7 +165,7 @@ private:
 			return;
 		}
 
-		//      gp           gp
+		//     gp(b)        gp(b)
 		//     /  \         /  \
 		//   p(r) u(b) -> n(r) u(b)
 		//      \         /
@@ -176,6 +188,13 @@ private:
 			rotate(node, ROT_RIGHT);	
 		}
 		
+		// case 2:
+		//     gp(b)        p(b)
+		//     /  \         /  \
+		//   p(r) u(b) -> n(r) gp(r)
+		//   /                   \
+		// n(r)                  u(b)
+		//    or mirrored version
 		node->parent->col = 'b';
 		gp->col = 'r';
 
@@ -391,10 +410,10 @@ void snapshot(const RBTree<T>& tree) {
 }
 
 int main() {
-	srand(1);
+	srand(200);
 
 	RBTree<int> tree;
-	for (int i = 0; i < 150; ++i) {
+	for (int i = 0; i < 1500; ++i) {
 		int ins = rand() % 100;
 		cout << ins << endl;
 		tree.insert(ins);
