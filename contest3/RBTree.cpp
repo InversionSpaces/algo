@@ -4,8 +4,11 @@
 #include <fstream>
 #include <string>
 #include <cstdlib>
+#include <optional>
 
 using namespace std;
+
+#define NDEBUG 1
 
 template<typename T>
 struct RBNode {
@@ -373,6 +376,25 @@ public:
 		return true;
 	}
 
+	optional<const T> next(const T& val) {
+		Node* cur = root;
+		Node* ans = nullptr;
+
+		while (cur) {
+			if (cur->val < val) 
+				cur = cur->right;
+			else { // cur->val >= val
+				if (!ans || cur->val < ans->val)
+					ans = cur;
+				cur = cur->left;
+			}
+		}
+
+		if (!ans) return nullopt;
+
+		return ans->val;
+	}
+
 	bool contains(const T& val) {
 		for (Node* cur = root; cur;) {
 			if (cur->val < val)
@@ -409,11 +431,51 @@ void snapshot(const RBTree<T>& tree) {
 	cout << "snapshot: " << i << endl;
 }
 
+typedef long long ll;
+
+const ll mod = 1000000000;
+
 int main() {
-	srand(200);
+	RBTree<ll> tree;
+
+	ll n;
+	cin >> n;
+
+	bool is_next = false;
+	ll last_next = 0;
+	for (ll i = 0; i < n; ++i) {
+		char op;
+		cin >> op;
+		
+		ll tmp;
+		cin >> tmp;
+
+		if (op == '+') {
+			if (is_next) {
+				is_next = false;
+				tmp = (last_next + tmp) % mod;
+			}
+			
+			tree.insert(tmp);
+		}
+		else if (op == '?') {
+			is_next = true;
+
+			auto res = tree.next(tmp);
+			if (res)
+				last_next = *res;
+			else
+				last_next = -1;
+
+			cout << last_next << "\n";
+		}
+	}
+	// test
+	/*
+	srand(3);
 
 	RBTree<int> tree;
-	for (int i = 0; i < 1500; ++i) {
+	for (int i = 0; i < 15; ++i) {
 		int ins = rand() % 100;
 		cout << ins << endl;
 		tree.insert(ins);
@@ -421,4 +483,10 @@ int main() {
 	}
 
 	snapshot(tree);
+
+	int find = rand() % 100;
+	cout << "find: " << find << endl;
+	auto next = tree.next(find);
+	cout << (next ? *next : -1) << endl;
+	*/
 }
