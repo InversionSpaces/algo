@@ -8,6 +8,8 @@
 
 using namespace std;
 
+#define NDEBUG 1
+
 template<typename T>
 struct RBNode {
 using Node = RBNode<T>;
@@ -361,11 +363,8 @@ public:
 		// if cur->col == 'r' replace was safe
 		if (cur->col == 'b') {
 			// if child was red just paint it black
-			if (child && child->col == 'r') {
-				if (cur == root)
-					root = child;
+			if (child && child->col == 'r')
 				child->col = 'b';
-			}
 			else if (cur == root)
 				root = child;
 			else
@@ -427,39 +426,67 @@ void snapshot(const RBTree<T>& tree) {
 	ofstream tmp("/tmp/tmp.dot");
 	tmp << tree;
 	tmp.close();
-	string cmd = string("dot /tmp/tmp.dot -Tpng -Gdpi=300 -o ./snapshot") + to_string(i) + string(".png");
+	string cmd = string("dot /tmp/tmp.dot -Tpng -Gdpi=300 -o ./snapshot") + to_string(i++) + string(".png");
 	system(cmd.c_str());
-	cout << "snapshot: " << i++ << endl;
+	cout << "snapshot: " << i << endl;
 }
 
 typedef long long ll;
 
-#include <set>
+const ll mod = 1000000000;
 
 int main() {
-	srand(time(NULL));
+	RBTree<ll> tree;
+
+	ll n;
+	cin >> n;
+
+	bool is_next = false;
+	ll last_next = 0;
+	for (ll i = 0; i < n; ++i) {
+		char op;
+		cin >> op;
+		
+		ll tmp;
+		cin >> tmp;
+
+		if (op == '+') {
+			if (is_next) {
+				is_next = false;
+				tmp = (last_next + tmp) % mod;
+			}
+			
+			tree.insert(tmp);
+		}
+		else if (op == '?') {
+			is_next = true;
+
+			auto res = tree.next(tmp);
+			if (res)
+				last_next = *res;
+			else
+				last_next = -1;
+
+			cout << last_next << "\n";
+		}
+	}
+	// test
+	/*
+	srand(3);
 
 	RBTree<int> tree;
-	set<int> check;
-	for (int i = 0; i < 500; ++i) {
-		int ins = rand() % 1000;
+	for (int i = 0; i < 15; ++i) {
+		int ins = rand() % 100;
+		cout << ins << endl;
 		tree.insert(ins);
-		check.insert(ins);
+		assert(tree.contains(ins));
 	}
 
-	while (!check.empty()) {
-		snapshot(tree);
+	snapshot(tree);
 
-		int i = rand() % check.size();
-		auto it = check.begin();
-		advance(it, i);
-
-		cout << "erase: " << *it << endl;
-		
-		check.erase(it);
-		tree.erase(*it);
-
-		for (const auto& v: check)
-			assert(tree.contains(v));
-	}
+	int find = rand() % 100;
+	cout << "find: " << find << endl;
+	auto next = tree.next(find);
+	cout << (next ? *next : -1) << endl;
+	*/
 }
