@@ -6,7 +6,10 @@
 #include <cstdlib>
 #include <optional>
 #include <stdexcept>
+#include <utility>
+#include <cstdio>
 
+//#define NDEBUG
 
 using namespace std;
 
@@ -477,6 +480,44 @@ public:
 		return ans->val;
 	}
 
+	optional<const T> next_ex(const T& val) const noexcept {
+		Node* cur = root;
+		Node* ans = nullptr;
+
+		while (cur) {
+			if (val < cur->val) {
+				if (!ans || cur->val < ans->val)
+					ans = cur;
+				cur = cur->left;
+			}
+			else 
+				cur = cur->right;
+		}
+
+		if (!ans) return nullopt;
+
+		return ans->val;
+	}
+
+	optional<const T> prev_ex(const T& val) const noexcept {
+		Node* cur = root;
+		Node* ans = nullptr;
+
+		while (cur) {
+			if (cur->val < val) {
+				if (!ans || ans->val < cur->val)
+					ans = cur;
+				cur = cur->right;
+			}
+			else
+				cur = cur->left;
+		}
+
+		if (!ans) return nullopt;
+
+		return ans->val;
+	}
+
 	bool contains(const T& val) const noexcept {
 		for (Node* cur = root; cur;) {
 			if (cur->val < val)
@@ -535,25 +576,109 @@ void snapshot(const RBTree<T>& tree) {
 	cout << "snapshot: " << i++ << endl;
 }
 
-typedef long long ll;
+typedef unsigned long long ull;
+
+typedef pair<ull, ull> mark;
+
+ostream& operator<<(ostream& out, const mark& m) {
+	out << m.first << "; " << m.second;
+	return  out;
+}
 
 int main() {
-	int n;
+	freopen("river.in", "r", stdin);
+	freopen("river.out", "w", stdout);
+
+	ull n;
 	cin >> n;
+	ull p;
+	cin >> p;
 
-	RBTree<int> tree; 
-	int c, k;
-
+	RBTree<mark> tree; 
+	
+	ull sum = 0;
+	ull start = 0;
 	while (n--) {
-		cin >> c >> k;
+		ull a;
+		cin >> a;
 
-		if (c > 0) {
-			tree.insert(k);
+		tree.insert({start, a});
+		start += a;
+		sum += a * a;
+	}
+
+	cout << sum << endl;
+
+	ull k;
+	cin >> k;
+
+	while (k--) {
+		ull e, v;
+		cin >> e >> v;
+
+		--v;
+		//cout << "e: " << e << "; v: " << v << "; size: " << tree.size() << endl;
+		//snapshot(tree);
+		if (e == 1) {
+			optional<mark> prev = nullopt;
+			if (v != 0) prev = tree.k_stat(v - 1);
+			
+			optional<mark> next = nullopt;
+			if (v + 1 != tree.size()) next = tree.k_stat(v + 1);
+
+			mark cur = tree.k_stat(v);
+
+			tree.erase(cur);
+			sum -= cur.second * cur.second;
+			
+			if (prev) {
+				tree.erase(*prev);
+				sum -= (*prev).second * (*prev).second;
+			}
+			if (next) {
+				tree.erase(*next);
+				sum -= (*next).second * (*next).second;
+			}
+
+			if (prev && next) {
+				(*prev).second += cur.second / 2;
+
+				ull addn = (cur.second + 1) / 2;
+				(*next).second += addn;
+				(*next).first -= addn;
+			}
+			else if (next) {
+				(*next).second += cur.second;
+				(*next).first -= cur.second;
+			}
+			else if (prev) {
+				(*prev).second += cur.second;
+				(*prev).first -= cur.second;
+			}
+
+			if (next) sum += (*next).second * (*next).second;
+			if (prev) sum += (*prev).second * (*prev).second;
+
+			if (next) tree.insert(*next);
+			if (prev) tree.insert(*prev);
 		}
-		else if (c < 0) {
-			tree.erase(k);
+		else if (e == 2) {
+			mark cur = tree.k_stat(v);
+			tree.erase(cur);
+
+			ull prevlen = cur.second / 2;
+			ull nextlen = (cur.second + 1) / 2;
+			mark prev = {cur.first, prevlen};
+			mark next = {cur.first + prevlen, nextlen};
+
+			sum -= cur.second * cur.second;
+			sum += next.second * next.second;
+			sum += prev.second * prev.second;
+
+			tree.insert(next);
+			tree.insert(prev);
 		}
-		else
-			cout << tree.k_stat(tree.size() - k) << endl;
+
+		cout << sum << endl;
 	}
 }
