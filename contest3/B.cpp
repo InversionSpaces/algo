@@ -24,7 +24,6 @@ using Node = RBNode<T>;
 
 	T val;
 	unsigned int ssize;
-	T ssum;
 
 	inline Node* grandparent() const noexcept {
 		if (parent)
@@ -49,12 +48,6 @@ using Node = RBNode<T>;
 		ssize += right ? right->ssize : 0;
 	}
 
-	inline void recal_sum() noexcept {
-		ssum = val;
-		ssum += left ? left->ssum : 0;
-		ssum += right ? right->ssum : 0;
-	}
-
 	inline unsigned int lsize() const noexcept {
 		return left ? left->ssize : 0;
 	}
@@ -77,8 +70,6 @@ using Node = RBNode<T>;
 			<< this->val 
 			<< " {"
 			<< this->ssize
-			<< ", "
-			<< this->ssum
 			<< "}\"]\n";
 
 		if (left) {
@@ -132,7 +123,6 @@ using Node = RBNode<T>;
 		}
 
 		assert(ssize == 1 + (left ? left->ssize : 0) + (right ? right->ssize : 0));
-		assert(ssum == val + (left ? left->ssum : 0) + (right ? right->ssum : 0));
 	}
 };
 
@@ -203,9 +193,6 @@ private:
 
 		node->recalc_size();
 		pivot->recalc_size();
-
-		node->recal_sum();
-		pivot->recal_sum();
 	}
 
 	void fix_insert(Node* node) {
@@ -374,7 +361,7 @@ public:
 
 	bool insert(const T& val) {
 		if (!root) {
-			root = new Node {'b', nullptr, nullptr, nullptr, val, 1, val};
+			root = new Node {'b', nullptr, nullptr, nullptr, val, 1};
 
 			return false;
 		}
@@ -396,14 +383,12 @@ public:
 		assert(prev);
 
 		// prev is father of ins 
-		Node* ins = new Node {'r', prev, nullptr, nullptr, val, 1, val};
+		Node* ins = new Node {'r', prev, nullptr, nullptr, val, 1};
 		// choose which children of prev ins is
 		(prev->val < val ? prev->right : prev->left) = ins;
 
-		for (const auto& node: path) {
+		for (const auto& node: path)
 			node->ssize += 1;
-			node->ssum += val;
-		}
 
 		if (prev->col == 'r') // we got conflict here
 			fix_insert(ins);
@@ -443,10 +428,8 @@ public:
 			cur = minl;
 		}
 		
-		for (const auto& node: path) {
+		for (const auto& node: path)
 			node->ssize -= 1;
-			node->ssum -= cur->val;
-		}
 
 		// now cur has at most one not null child
 		Node* child = cur->right ? cur->right : cur->left;
@@ -535,8 +518,6 @@ public:
 	}
 
 	~RBTree() {
-		if (!root) return;
-
 		vector<Node*> st = {root};
 
 		while (!st.empty()) {
@@ -548,47 +529,6 @@ public:
 
 			delete cur;
 		}
-	}
-
-	T sum_greater(const T& val) const noexcept {
-		T sum = 0;
-
-		Node* cur = root;
-		while (cur) {
-			if (val < cur->val) { 
-				sum += cur->val;
-				sum += cur->right ? cur->right->ssum : 0;
-
-				cur = cur->left;
-			}
-			else 
-				cur = cur->right;
-
-		}
-
-		return sum;
-	}
-
-	T sum_lower(const T& val) const noexcept {
-		T sum = 0;
-
-		Node* cur = root;
-		while (cur) {
-			if (cur->val < val) {
-				sum += cur->val;
-				sum += cur->left ? cur->left->ssum : 0;
-
-				cur = cur->right;
-			}
-			else 
-				cur = cur->left;
-		}
-
-		return sum;
-	}
-
-	T sum() const noexcept {
-		return root ? root->ssum : 0;
 	}
 	
 	template<typename U>
@@ -617,65 +557,112 @@ void snapshot(const RBTree<T>& tree) {
 
 typedef unsigned long long ull;
 
-#include <set>
+typedef pair<ull, ull> mark;
+
+ostream& operator<<(ostream& out, const mark& m) {
+	out << m.first << "; " << m.second;
+	return  out;
+}
 
 int main() {
-	//ull seed = time(NULL);
-	//cout << seed << endl;
-	//srand(seed);
+	freopen("river.in", "r", stdin);
+	freopen("river.out", "w", stdout);
 
-	RBTree<ull> tree;
+	ull n;
+	cin >> n;
+	ull p;
+	cin >> p;
 
-	//set<ull> check;
-
-	//ull n = rand() % 100 + 5; cout << n << endl;
-	ull n; cin >> n;
-
-	bool last_quest = false;
-	ull last_ans = 0;
-	ull mod = 1000000000;
+	RBTree<mark> tree; 
+	
+	ull sum = 0;
+	ull start = 0;
 	while (n--) {
-		//char c = rand() % 2 ? '+' : '?'; cout << c << ' ';
-		char c; cin >> c;
+		ull a;
+		cin >> a;
 
-		if (c == '+') {
-			//ull a = rand() % 100; cout << a << endl;
-			ull a; cin >> a;
+		tree.insert({start, a});
+		start += a;
+		sum += a * a;
+	}
+
+	cout << sum << endl;
+
+	ull k;
+	cin >> k;
+
+	//snapshot(tree);
+
+	while (k--) {
+		ull e, v;
+		cin >> e >> v;
+
+		--v;
+		//cout << "e: " << e << "; v: " << v << "; size: " << tree.size() << endl;
+		//snapshot(tree);
+		if (e == 1) {
+			optional<mark> prev = nullopt;
+			if (v != 0) prev = tree.k_stat(v - 1);
 			
-			ull ins = last_quest ? (a + last_ans) % mod : a;
-			tree.insert(ins);
-			//check.insert(ins);
+			optional<mark> next = nullopt;
+			if (v + 1 != tree.size()) next = tree.k_stat(v + 1);
+
+			mark cur = tree.k_stat(v);
+
+			//cout << "cur: " << cur << endl;
+
+			tree.erase(cur);
+			sum -= cur.second * cur.second;
 			
-			last_quest = false;
-
-		}
-		else if (c == '?') {
-			last_quest = true;
-
-			//ull l = rand() % 100, r = rand() % 100; cout << l << ' ' << r << endl;
-			ull l, r; cin >> l >> r;
-
-			if (l > r) {
-				cout << '0' << endl;
-				continue;
+			if (prev) {
+				//cout << "prev: " << *prev << endl;
+				tree.erase(*prev);
+				sum -= (*prev).second * (*prev).second;
+			}
+			if (next) {
+				tree.erase(*next);
+				sum -= (*next).second * (*next).second;
 			}
 
-			//snapshot(tree);
-			
-			ull lower = tree.sum_lower(l);
-			ull greater = tree.sum_greater(r);
-			
-			//cout << "lower: " << lower << endl;
-			//cout << "greater: " << greater << endl;
-			last_ans = tree.sum() - lower - greater;
-			
-			//ull sum = 0;
-			//for (const auto& i: check)
-			//	if (l <= i && i <=r)
-			//		sum += i;
-			//assert(last_ans == sum);
-			
-			cout << last_ans << endl;
+			if (prev && next) {
+				(*prev).second += cur.second / 2;
+
+				ull addn = (cur.second + 1) / 2;
+				(*next).second += addn;
+				(*next).first -= addn;
+			}
+			else if (next) {
+				(*next).second += cur.second;
+				(*next).first -= cur.second;
+			}
+			else if (prev) {
+				(*prev).second += cur.second;
+			}
+
+			if (next) sum += (*next).second * (*next).second;
+			if (prev) sum += (*prev).second * (*prev).second;
+
+			if (next) tree.insert(*next);
+			if (prev) tree.insert(*prev);
 		}
+		else if (e == 2) {
+			mark cur = tree.k_stat(v);
+			tree.erase(cur);
+
+			ull prevlen = cur.second / 2;
+			ull nextlen = (cur.second + 1) / 2;
+			mark prev = {cur.first, prevlen};
+			mark next = {cur.first + prevlen, nextlen};
+
+			sum -= cur.second * cur.second;
+			sum += next.second * next.second;
+			sum += prev.second * prev.second;
+
+			tree.insert(next);
+			tree.insert(prev);
+		}
+		
+		//snapshot(tree);
+		cout << sum << endl;
 	}
 }
