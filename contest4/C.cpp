@@ -13,11 +13,16 @@ private:
 public:
 	BITree(ll n) : arr(n, 0), inarr(n, 0) {}
 
-	BITree(const vector<ll>&& tmp) : arr(tmp), inarr(arr.size(), 0)
+	BITree(vector<ll>& tmp) : arr(tmp), inarr(tmp.size(), 0)
 	{
-		for (ll i = 0; i < inarr.size(); ++i)
-			for (ll j = i & (i + 1); j <= i; ++j)
-				inarr[i] += arr[j];
+		for (ll i = 1; i < tmp.size(); ++i)
+			tmp[i] += tmp[i - 1];
+
+		for (ll i = 0; i < inarr.size(); ++i) {
+			ll idx = i & (i + 1);
+			inarr[i] = tmp[i];
+			inarr[i] -= idx ? tmp[idx - 1] : 0;
+		}
 	}
 
 	ll prefix(ll pos) {
@@ -41,6 +46,9 @@ public:
 };
 
 int main() {
+	ios_base::sync_with_stdio(false);
+	cin.tie(0);
+
 	ll n;
 	cin >> n;
 
@@ -62,9 +70,8 @@ int main() {
 	for (ll i = 0; i < n; ++i)
 		++tmp[arr[i]];
 	
-	BITree back(move(tmp));
+	BITree back(tmp);
 	BITree front(n);
-
 
 	ll ans = 0;
 	for (ll i = 0; i < n; ++i) {
@@ -73,5 +80,5 @@ int main() {
 		front.update(n - arr[i] - 1, 1);
 	}
 
-	cout << ans << endl;
+	cout << ans << '\n';
 }
