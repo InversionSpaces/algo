@@ -10,11 +10,18 @@ private:
 	vector<ll> arr;
 	vector<ll> inarr;
 public:
-	BITree(const vector<ll>& arr) : arr(arr), inarr(arr.size(), 0)
+	BITree(vector<ll>& arr) : arr(arr), inarr(arr.size(), 0)
 	{
-		for (ll i = 0; i < inarr.size(); ++i)
-			for (ll j = i & (i + 1); j <= i; ++j)
-				inarr[i] += arr[j] == 0;
+		arr[0] = arr[0] == 0;
+		for (ll i = 1; i < arr.size(); ++i) {
+			arr[i] = arr[i - 1] + ll(arr[i] == 0);
+		}
+
+		for (ll i = 0; i < inarr.size(); ++i) {
+			ll idx = i & (i + 1);
+			inarr[i] = arr[i];
+			inarr[i] -= idx ? arr[idx - 1] : 0;
+		}
 	}
 
 	ll prefix(ll pos) {
