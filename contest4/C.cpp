@@ -13,15 +13,16 @@ private:
 public:
 	BITree(ll n) : arr(n, 0), inarr(n, 0) {}
 
-	BITree(vector<ll>& tmp) : arr(tmp), inarr(tmp.size(), 0)
+	BITree(vector<ll>& fromarr) : arr(fromarr), inarr(fromarr.size(), 0)
 	{
-		for (ll i = 1; i < tmp.size(); ++i)
-			tmp[i] += tmp[i - 1];
+		auto& prefsum = fromarr; // to rename
+		for (ll i = 1; i < prefsum.size(); ++i)
+			prefsum[i] += prefsum[i - 1];
 
 		for (ll i = 0; i < inarr.size(); ++i) {
 			ll idx = i & (i + 1);
-			inarr[i] = tmp[i];
-			inarr[i] -= idx ? tmp[idx - 1] : 0;
+			inarr[i] = prefsum[i];
+			inarr[i] -= idx ? prefsum[idx - 1] : 0;
 		}
 	}
 
@@ -58,19 +59,20 @@ int main() {
 		--i;
 	}
 	
-	vector<ll> tmp = arr;
-	sort(tmp.begin(), tmp.end());
+	vector<ll> sorted = arr;
+	sort(sorted.begin(), sorted.end());
 	
 	for (auto& i: arr) {
-		auto it = lower_bound(tmp.begin(), tmp.end(), i);
-		i = it - tmp.begin();
+		auto it = lower_bound(sorted.begin(), sorted.end(), i);
+		i = it - sorted.begin();
 	}
 
-	fill(tmp.begin(), tmp.end(), 0);
+	auto& count = sorted; // to rename
+	fill(count.begin(), count.end(), 0);
 	for (ll i = 0; i < n; ++i)
-		++tmp[arr[i]];
+		++count[arr[i]];
 	
-	BITree back(tmp);
+	BITree back(count);
 	BITree front(n);
 
 	ll ans = 0;

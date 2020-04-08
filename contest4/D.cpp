@@ -49,17 +49,12 @@ public:
 	size_t segment(size_t l, size_t r) {
 		if (l == r) return l;
 
-		//cout << l << " to " << r << ":" << endl;
 		const size_t& len = r - l;
-		const size_t& k = len2k.at(len);
-		//cout << "k: " << k << endl;
+		const size_t& k = len2k[len];
 		const size_t& powk = 1 << k;
-		//cout << "powk: " << powk << endl;
 
-		const size_t& maxl = table.at(l).at(k);
-		const size_t& maxr = table.at(r - powk + 1).at(k);
-
-		//cout << "maxl: " << maxl << "; maxr: " << maxr << endl;
+		const size_t& maxl = table[l][k];
+		const size_t& maxr = table[r - powk + 1][k];
 
 		return arr.at(maxl) > arr.at(maxr) ? maxl : maxr;
 	}
