@@ -1,24 +1,26 @@
-#include <stdio.h>
+#include <iostream>
+#include <vector>
 
 #pragma GCC optimize ("O3")
 #pragma GCC target("avx2")
 
+using namespace std;
+
 int main() {
-	int N, M;
-	scanf("%d %d", &N, &M);
-
-	int m[100], c[100];
-	for (int i = 0; i < N; ++i)
-		scanf("%d", m + i);
-	for (int i = 0; i < N; ++i)
-		scanf("%d", c + i);
+	using vi = vector<int>;
+	using vvi = vector<vi>;
 	
-	int table[100][10001][2];
-	for (int i = 0; i <= M; ++i) {
-		table[0][i][0] = 0;
-		table[0][i][1] = 0;
-	}
+	int N, M;
+	cin >> N >> M;
 
+	vi m(N);
+	vi c(N);
+	for (auto& i: m)
+		cin >> i;
+	for (auto& i: c)
+		cin >> i;
+
+	vector<vvi> table(N, vvi(M + 1, vi(2, 0)));
 	table[0][m[0]][0] = c[0];
 	table[0][m[0]][1] = 1;
 
@@ -47,7 +49,7 @@ int main() {
 		}
 	}
 
-	int ans[100];
+	vi ans(N, 0);
 	int count = 0;
 	for (int i = N; i; --i) {
 		if (table[i - 1][maxm][1]) {
@@ -56,7 +58,7 @@ int main() {
 		}
 	}
 
-	printf("%d\n", count);
+	cout << count << endl;
 	for (int i = count; i; --i)
-		printf("%d ", ans[i - 1]);
+		cout << ans[i - 1] << ' ';
 }
