@@ -54,17 +54,22 @@ inline void push(STNode* node) {
 			STNode* left = node->left;
 			STNode* right = node->right;
 
-			push(left);
-			push(right);
-
 			left->m.min += node->push_val;
 			right->m.min += node->push_val;
 
-			left->need_push = true;
-			right->need_push = true;
-
-			left->push_val = node->push_val;
-			right->push_val = node->push_val;
+			if (left->need_push)
+				left->push_val += node->push_val;
+			else {
+				left->need_push = true;
+				left->push_val = node->push_val;
+			}
+			
+			if (right->need_push)
+				right->push_val += node->push_val;
+			else {
+				right->need_push = true;
+				right->push_val = node->push_val;
+			}
 		}
 	}
 }
@@ -149,32 +154,6 @@ void add(STNode* node, ll id) {
 		node->m = choose(node->left->m, node->right->m);
 	}
 }
-
-/*
-#include <vector>
-
-class STree {
-	struct mst {
-		ll min, id;
-	};
-private:
-	const ll size;
-	vector<mst> tree;
-public:
-	STree(ll n) : size(n), tree(4 * n) {
-		build(0, 0, n - 1);
-	}
-
-	void build(ll v, ll tl, ll tr) {
-		if (tl == tr) tree[v] = {0, -1};
-		else {
-			ll mid = (tl + tr) / 2;
-			build(2 * v + 1, tl, mid);
-			build(2 * v + 2, mid + 1, tr);
-		}
-	}
-};
-*/
 
 int main() {
 	ios_base::sync_with_stdio(false);
