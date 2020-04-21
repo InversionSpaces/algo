@@ -9,6 +9,9 @@ using namespace std;
 
 typedef int ll;
 
+struct minid {
+	ll min, min_id;
+};
 
 struct STNode {
 	ll l, r;
