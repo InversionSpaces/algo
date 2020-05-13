@@ -184,7 +184,12 @@ void print(const graph_t& graph) {
 	}
 }
 
+#pragma GCC optimize ("O3")
+
 int main() {
+	ios_base::sync_with_stdio(false);
+	cin.tie(0);
+
 	ll n, m;
 	cin >> n >> m;
 
