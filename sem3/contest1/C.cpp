@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <utility>
+#include <cmath>
 
 using namespace std;
 
@@ -12,6 +13,11 @@ struct DualGraph {
     vvec<int> right;
 
     DualGraph(int n, int m) : left(n), right(m) {}
+
+    void add(const int left_idx, const int right_idx) {
+        left.at(left_idx).push_back(right_idx);
+        right.at(right_idx).push_back(left_idx);
+    }
 };
 
 istream& operator>>(istream& in, DualGraph& g) {
@@ -75,12 +81,51 @@ ostream& operator<<(ostream& out, const Match& match) {
     return out;
 }
 
+struct Point {
+    const int time;
+    const int x, y;
+};
+
+inline int time_between(const int x1, const int y1, const int x2, const int y2) {
+    return abs(x1 - x2) + abs(y1 - y2);
+}
+
+inline bool reachable(const Point& end, const Point& start) {
+    return time_between(start.x, start.y, end.x, end.y) < start.time - end.time;
+}
+
+DualGraph gen_graph(const vector<Point>& starts, const vector<Point>& ends) {
+    DualGraph retval(ends.size(), starts.size());
+
+    for (int i = 0; i < ends.size(); ++i)
+        for (int j = 0; j < starts.size(); ++j)
+            if (reachable(ends.at(i), starts.at(j)))
+                    retval.add(i, j);
+
+    return retval;
+}
+
 int main() {
-    int n = 0, m = 0;
-    cin >> n >> m;
+    int M = 0;
+    cin >> M;
 
-    DualGraph graph(n, m);
+    vector<Point> starts, ends;
+    starts.reserve(M);
+    ends.reserve(M);
 
-    cin >> graph;
-    cout << Match::get_max_on(graph);
+    for (int i = 0; i < M; ++i) {
+        int h = 0, m = 0, xs = 0, ys = 0, xe = 0, ye = 0;
+        scanf("%d:%d %d %d %d %d", &h, &m, &xs, &ys, &xe, &ye);
+
+        const int time_s = h * 60 + m;
+        const int time_e = time_s + time_between(xs, ys, xe, ye);
+
+        starts.push_back({time_s, xs, ys});
+        ends.push_back({time_e, xe, ye});
+    }
+
+    const DualGraph graph = gen_graph(starts, ends);
+    const Match match = Match::get_max_on(graph);
+
+    cout << (M - match.edges.size());
 }
