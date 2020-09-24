@@ -163,13 +163,9 @@ std::istream& operator>>(std::istream& in, Graph& g) {
         --u; --v;
 
         g.capacity.at(u).at(v) += c;
-        auto& un = g.neighbours.at(u);
-        if (find_if(un.begin(), un.end(), [v] (const pair<lolo, lolo>& n) {
-                    return n.first == v;
-                }) == un.end()) {
-            un.push_back({v, i});
-            g.neighbours.at(v).push_back({u, -1});
-        }
+        g.capacity.at(v).at(u) += c;
+        g.neighbours.at(u).push_back({v, i});
+        g.neighbours.at(v).push_back({u, i});
     }
 
     return in;
